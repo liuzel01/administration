@@ -1,0 +1,323 @@
+/**
+ * @package admin
+ */
+
+import { mount } from '@vue/test-utils';
+
+const seoDomainPrefix = '124c71d524604ccbad6042edce3ac799';
+
+const linkDataProvider = [{
+    buttonConfig: {
+        value: 'http://www.domain.de/test',
+        type: 'link',
+    },
+    value: 'http://www.domain.de/test',
+    type: 'link',
+    prefix: 'http://',
+    selector: '.sw-field--text input',
+    label: 'sw-text-editor-toolbar.link.linkTo',
+    placeholder: 'sw-text-editor-toolbar.link.placeholder',
+}, {
+    buttonConfig: {
+        value: 'tel:01234567890123',
+        type: 'phone',
+    },
+    value: '01234567890123',
+    type: 'phone',
+    prefix: 'tel:',
+    selector: '.sw-field--text input',
+    label: 'sw-text-editor-toolbar.link.linkTo',
+    placeholder: 'sw-text-editor-toolbar.link.placeholderPhoneNumber',
+}, {
+    buttonConfig: {
+        value: 'mailto:test@snapadmin.net',
+        type: 'email',
+    },
+    value: 'test@snapadmin.net',
+    type: 'email',
+    prefix: 'mailto:',
+    selector: '.sw-field--email input',
+    label: 'sw-text-editor-toolbar.link.linkTo',
+    placeholder: 'sw-text-editor-toolbar.link.placeholderEmail',
+}, {
+    buttonConfig: {
+        value: `${seoDomainPrefix}/detail/aaaaaaa524604ccbad6042edce3ac799#`,
+        type: 'detail',
+    },
+    value: 'aaaaaaa524604ccbad6042edce3ac799',
+    type: 'detail',
+    prefix: `${seoDomainPrefix}/detail/`,
+    selector: '.sw-text-editor-link-menu__entity-single-select input',
+    label: 'sw-text-editor-toolbar.link.linkTo',
+    placeholder: 'sw-text-editor-toolbar.link.placeholderProduct',
+}];
+
+
+async function createWrapper(buttonConfig) {
+    return mount(await wrapTestComponent('sw-text-editor-link-menu', { sync: true }), {
+        global: {
+            stubs: {
+                'sw-select-field': await wrapTestComponent('sw-select-field'),
+                'sw-switch-field': await wrapTestComponent('sw-switch-field'),
+                'sw-email-field': await wrapTestComponent('sw-email-field'),
+                'sw-text-field': await wrapTestComponent('sw-text-field'),
+                'sw-url-field': await wrapTestComponent('sw-url-field'),
+                'sw-entity-single-select': await wrapTestComponent('sw-entity-single-select'),
+                'sw-category-tree-field': await wrapTestComponent('sw-category-tree-field'),
+                'sw-button': await wrapTestComponent('sw-button'),
+                'sw-button-deprecated': await wrapTestComponent('sw-button-deprecated'),
+                'sw-contextual-field': await wrapTestComponent('sw-contextual-field'),
+                'sw-block-field': await wrapTestComponent('sw-block-field'),
+                'sw-base-field': await wrapTestComponent('sw-base-field'),
+                'sw-field-error': await wrapTestComponent('sw-field-error'),
+                'sw-select-base': await wrapTestComponent('sw-select-base'),
+                'sw-product-variant-info': await wrapTestComponent('sw-product-variant-info'),
+                'sw-select-result-list': await wrapTestComponent('sw-select-result-list'),
+                'sw-popover': {
+                    template: '<div class="sw-popover"><slot></slot></div>',
+                },
+                'sw-select-result': await wrapTestComponent('sw-select-result'),
+                'sw-highlight-text': await wrapTestComponent('sw-highlight-text'),
+            },
+        },
+        props: {
+            buttonConfig: {
+                title: 'test',
+                icon: '',
+                expanded: true,
+                newTab: true,
+                displayAsButton: true,
+                value: '',
+                type: 'link',
+                tag: 'a',
+                active: false,
+                ...buttonConfig,
+            },
+        },
+    });
+}
+
+const responses = global.repositoryFactoryMock.responses;
+const categoryData = {
+    id: 'test-id',
+    name: 'category-name',
+    translated: {
+        name: 'category-name',
+    },
+};
+
+responses.addResponse({
+    method: 'Post',
+    url: '/search/category',
+    status: 200,
+    response: {
+        data: [{
+            id: 'test-id',
+            attributes: categoryData,
+            relationships: [],
+        }],
+        meta: {
+            total: 1,
+        },
+    },
+});
+
+responses.addResponse({
+    method: 'Post',
+    url: '/search/product',
+    status: 200,
+    response: {
+        data: [
+            {
+                id: 'aaaaaaa524604ccbad6042edce3ac799',
+                attributes: {
+                    id: 'aaaaaaa524604ccbad6042edce3ac799',
+                    name: 'aaaaaaa524604ccbad6042edce3ac799',
+                },
+                relationships: [],
+            },
+            {
+                id: 'some-id',
+                attributes: {
+                    id: 'some-id',
+                    name: 'some-name',
+                },
+                relationships: [],
+            },
+        ],
+    },
+});
+
+describe('components/form/sw-text-editor/sw-text-editor-link-menu', () => {
+    it('should be a Vue.js component', async () => {
+        const wrapper = await createWrapper();
+
+        expect(wrapper.vm).toBeTruthy();
+    });
+
+    linkDataProvider.forEach(link => {
+        it(`parses ${link.type} URL's correctly`, async () => {
+            const wrapper = await createWrapper(link.buttonConfig);
+            await flushPromises();
+
+            // Label should be set
+            expect(wrapper.text()).toContain(link.label);
+
+            // Element should have correct parsed value and placeholder
+            const inputField = wrapper.find(link.selector);
+
+            // sw-entity-single-select only uses the input field for the search
+            if (link.type !== 'detail') {
+                // eslint-disable-next-line jest/no-conditional-expect
+                expect(inputField.element.value).toBe(link.value);
+            }
+
+            // Placeholder should be set for all types
+            expect(inputField.attributes('placeholder')).toBe(link.placeholder);
+
+            let placeholderId = 'some-id';
+            await inputField.setValue(placeholderId);
+
+            // sw-entity-single-select specific changes
+            if (link.type === 'detail') {
+                await inputField.trigger('click');
+                await flushPromises();
+
+                await wrapper.find('.sw-select-option--1').trigger('click');
+
+                placeholderId += '#';
+            }
+
+            await wrapper.find('.sw-text-editor-toolbar-button__link-menu-buttons-button-insert').trigger('click');
+            await flushPromises();
+
+            const dispatchedInputEvents = wrapper.emitted('button-click');
+
+            expect(dispatchedInputEvents[0]).toStrictEqual([
+                {
+                    buttonVariant: undefined,
+                    displayAsButton: true,
+                    newTab: true,
+                    type: 'link',
+                    value: link.prefix += placeholderId,
+                },
+            ]);
+        });
+    });
+
+    it('parses category links and reacts to changes correctly', async () => {
+        const wrapper = await createWrapper({
+            value: `${seoDomainPrefix}/navigation/aaaaaaa524604ccbad6042edce3ac799#`,
+            type: 'link',
+        });
+
+        await flushPromises();
+
+        const categoryTreeFieldElement = wrapper.find('.sw-category-tree-field input');
+
+        expect(wrapper.text()).toContain('sw-text-editor-toolbar.link.linkTo');
+        expect(categoryTreeFieldElement.element.placeholder).toBe('sw-text-editor-toolbar.link.placeholderCategory');
+
+        const asyncComponentWrapper = wrapper.findComponent('.sw-category-tree-field');
+        const categoryTreeField = asyncComponentWrapper.vm.$children[0];
+        expect(categoryTreeField.categoryCriteria).toStrictEqual(
+            expect.objectContaining({
+                limit: 25,
+                page: 1,
+            }),
+        );
+
+        const associations = categoryTreeField.categoryCriteria.associations;
+
+        expect(associations).toHaveLength(1);
+        expect(associations[0].association).toBe('options');
+
+        expect(associations[0].criteria.associations).toHaveLength(1);
+        expect(associations[0].criteria.associations[0].association).toBe('group');
+
+
+        expect(categoryTreeField.categoryCriteria.filters).toStrictEqual(expect.objectContaining(
+            [{
+                operator: 'OR',
+                queries: [
+                    { field: 'product.childCount', type: 'equals', value: 0 },
+                    { field: 'product.childCount', type: 'equals', value: null },
+                ],
+                type: 'multi',
+            }],
+        ));
+
+        expect(categoryTreeField.categoriesCollection).toHaveLength(1);
+        expect(categoryTreeField.categoriesCollection[0]).toEqual(categoryData);
+
+        categoryTreeField.$emit('selection-add', {
+            id: 'new-selection',
+        });
+        await flushPromises();
+
+        await wrapper.find('.sw-text-editor-toolbar-button__link-menu-buttons-button-insert').trigger('click');
+        await flushPromises();
+
+        const dispatchedInputEvents = wrapper.emitted('button-click');
+
+        expect(dispatchedInputEvents[0]).toStrictEqual([
+            {
+                buttonVariant: undefined,
+                displayAsButton: true,
+                newTab: true,
+                type: 'link',
+                value: '124c71d524604ccbad6042edce3ac799/navigation/new-selection#',
+            },
+        ]);
+
+        categoryTreeField.$emit('selection-remove');
+        await flushPromises();
+
+        const isDisabled = wrapper.findComponent('.sw-text-editor-toolbar-button__link-menu-buttons-button-insert').attributes('disabled');
+        expect(isDisabled).toBeDefined();
+    });
+
+    it('should clear the state if the link category is changed', async () => {
+        const wrapper = await createWrapper({
+            value: 'http://www.domain.de/test',
+            type: 'link',
+        });
+
+        await flushPromises();
+
+        expect(wrapper.vm.linkCategory).toBe('link');
+
+        await wrapper.get('select').setValue('email');
+        await flushPromises();
+
+        expect(wrapper.vm.linkCategory).toBe('email');
+
+        const isDisabled = wrapper.findComponent('.sw-text-editor-toolbar-button__link-menu-buttons-button-insert').attributes('disabled');
+        expect(isDisabled).toBeDefined();
+    });
+
+    it('should clear the linkTarget when the remove button is pressed', async () => {
+        const wrapper = await createWrapper({
+            value: 'http://www.domain.de/test',
+            type: 'link',
+        });
+
+        await flushPromises();
+
+        expect(wrapper.vm.linkCategory).toBe('link');
+        expect(wrapper.vm.linkTarget).toBe('http://www.domain.de/test');
+
+
+        wrapper.findComponent('.sw-text-editor-toolbar-button__link-menu-buttons-button-remove').vm.$emit('click');
+        await flushPromises();
+
+
+        const dispatchedInputEvents = wrapper.emitted('button-click');
+
+        expect(dispatchedInputEvents[0]).toStrictEqual([
+            {
+                type: 'linkRemove',
+            },
+        ]);
+    });
+});

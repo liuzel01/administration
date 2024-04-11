@@ -1,0 +1,16 @@
+{
+  "sw-settings-store": {
+    "general": {
+      "mainMenuItemGeneral": "官方账号",
+      "textHeadline": "官方账号",
+      "description": "Change your Shopware Account settings here.",
+      "buttonSave": "保存",
+      "messageSaveSuccess": "Your Shopware Account information have been saved."
+    },
+    "detail": {
+      "titleCard": "Settings",
+      "labelHost": "Licence domain",
+      "placeholderHost": "Enter the licence domain (shop domain), specified in your Shopware Account."
+    }
+  }
+}
