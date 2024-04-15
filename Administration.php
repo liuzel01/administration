@@ -19,7 +19,7 @@ use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
  * 新增5个修改
  * 新增6个修改
  * 新增7个修改77
- * 新增8个修改
+ * 新增8个修改8
  */
 #[Package('administration')]
 class Administration extends Bundle
